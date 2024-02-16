@@ -36,18 +36,19 @@ int rte_ethtool_get_drvinfo(uint16_t port_id, struct ethtool_drvinfo *drvinfo)
 	snprintf(drvinfo->version, sizeof(drvinfo->version), "%s",
 		rte_version());
 	/* TODO: replace bus_info by rte_devargs.name */
-	if (dev_info.device)
-		bus = rte_bus_find_by_device(dev_info.device);
-	if (bus && !strcmp(bus->name, "pci")) {
-		pci_dev = RTE_DEV_TO_PCI(dev_info.device);
-		snprintf(drvinfo->bus_info, sizeof(drvinfo->bus_info),
-			"%04x:%02x:%02x.%x",
-			pci_dev->addr.domain, pci_dev->addr.bus,
-			pci_dev->addr.devid, pci_dev->addr.function);
-	} 
-	else {
+	// if (dev_info.device)
+	// 	bus = rte_bus_find_by_device(dev_info.device);
+	// if (bus && !strcmp(bus->name, "pci")) {
+	// 	pci_dev = RTE_DEV_TO_PCI(dev_info.device);
+	// 	snprintf(drvinfo->bus_info, sizeof(drvinfo->bus_info),
+	// 		"%04x:%02x:%02x.%x",
+	// 		pci_dev->addr.domain, pci_dev->addr.bus,
+	// 		pci_dev->addr.devid, pci_dev->addr.function);
+	// } 
+	// else {
+	// 	snprintf(drvinfo->bus_info, sizeof(drvinfo->bus_info), "N/A");
+	// }
 		snprintf(drvinfo->bus_info, sizeof(drvinfo->bus_info), "N/A");
-	}
 
 	memset(&reg_info, 0, sizeof(reg_info));
 	rte_eth_dev_get_reg_info(port_id, &reg_info);

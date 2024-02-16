@@ -54,10 +54,11 @@ nic_vendor_t 				nic_vendor[3];
 struct rte_timer 		nat;
 
 static const struct rte_eth_conf port_conf_default = {
-	.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN, },
-	.txmode = { .offloads = DEV_TX_OFFLOAD_IPV4_CKSUM,
-							DEV_TX_OFFLOAD_UDP_CKSUM, 
-							DEV_TX_OFFLOAD_TCP_CKSUM, }
+	// .rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN, },
+	// .rxmode = { .max_lro_pkt_size = RTE_ETHER_MAX_LEN, },
+	.txmode = { .offloads = RTE_ETH_TX_OFFLOAD_IPV4_CKSUM,
+							RTE_ETH_TX_OFFLOAD_UDP_CKSUM, 
+							RTE_ETH_TX_OFFLOAD_TCP_CKSUM, }
 };
 
 static uint16_t nb_rxd = RX_RING_SIZE;
@@ -88,9 +89,9 @@ static inline int port_init(uint16_t port, uint8_t vendor_id, struct rte_mempool
 	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
 	rte_eth_dev_info_get(port, &dev_info);
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |=
-			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+			RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
 	if (retval != 0)
@@ -228,8 +229,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	rte_eth_macaddr_get(0,(struct ether_addr *)mac_addr[0]);
-	rte_eth_macaddr_get(1,(struct ether_addr *)mac_addr[1]);
+	rte_eth_macaddr_get(0,(struct rte_ether_addr *)mac_addr[0]);
+	rte_eth_macaddr_get(1,(struct rte_ether_addr *)mac_addr[1]);
 
 	rte_timer_subsystem_init();
 	rte_timer_init(&nat);

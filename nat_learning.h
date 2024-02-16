@@ -1,8 +1,8 @@
 #include <linux/if_ether.h>
 
-extern void 					nat_tcp_learning(struct ether_hdr *eth_hdr, struct ipv4_hdr *ip_hdr, struct tcp_hdr *tcphdr, uint32_t *new_port_id);
-extern void 					nat_udp_learning(struct ether_hdr *eth_hdr, struct ipv4_hdr *ip_hdr, struct udp_hdr *udphdr, uint32_t *new_port_id);
-extern void 					nat_icmp_learning(struct ether_hdr *eth_hdr, struct ipv4_hdr *ip_hdr, struct icmp_hdr *icmphdr, uint32_t *new_port_id);
+extern void 					nat_tcp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hdr, struct rte_tcp_hdr *tcphdr, uint32_t *new_port_id);
+extern void 					nat_udp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hdr, struct rte_udp_hdr *udphdr, uint32_t *new_port_id);
+extern void 					nat_icmp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hdr, struct rte_icmp_hdr *icmphdr, uint32_t *new_port_id);
 extern uint16_t 				get_checksum(const void *const addr, const size_t bytes);
 //extern void 					send_arp(__attribute__((unused)) struct rte_timer *tim, uint32_t *dst_addr);
 
