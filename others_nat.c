@@ -179,8 +179,8 @@ int up_stream_others(void)
 					case ICMP:
 					 	icmphdr = (struct rte_icmp_hdr *)(rte_pktmbuf_mtod(single_pkt, unsigned char *) + sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
 					 	nat_icmp_learning(eth_hdr,ip_hdr,icmphdr,&new_port_id);
-					 	addr_table[new_port_id].is_alive = 10;
-					 	if (unlikely(addr_table[new_port_id].is_fill == 0)) {
+					 	addr_table[new_port_id].is_alive = 60;
+						if (unlikely(new_port_id == -1)) {
 							rte_pktmbuf_free(single_pkt);
 							break;
 						}
@@ -192,29 +192,33 @@ int up_stream_others(void)
 						icmphdr->icmp_cksum = get_checksum(icmphdr,single_pkt->data_len - sizeof(struct rte_ipv4_hdr));
 						  
 						pkt[total_tx++] = single_pkt;
-						puts("nat icmp at port 0");
+
 						break;
 					case UDP :
+
 						single_pkt->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_UDP_CKSUM;
 						udphdr = (struct rte_udp_hdr *)(rte_pktmbuf_mtod(single_pkt, unsigned char *) + sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
 		 				nat_udp_learning(eth_hdr,ip_hdr,udphdr,&new_port_id);
-		 				addr_table[new_port_id].is_alive = 10;
-						if (unlikely(addr_table[new_port_id].is_fill == 0)) {
+						if (unlikely(new_port_id == -1)) {
 							rte_pktmbuf_free(single_pkt);
 							break;
 						}
+		 				addr_table[new_port_id].is_alive = 300;
+					
 		 				rte_memcpy(eth_hdr->dst_addr.addr_bytes,addr_table[new_port_id].dst_mac,6);
 						rte_memcpy(eth_hdr->src_addr.addr_bytes,mac_addr[1],6);
 						ip_hdr->src_addr = ip_addr[1];
 						udphdr->src_port = rte_cpu_to_be_16(new_port_id);
 						udphdr->dgram_cksum = 0;
+
+						pkt[total_tx++] = single_pkt;
 						break;
 					case TCP :
 						single_pkt->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM;
 						tcphdr = (struct rte_tcp_hdr *)(rte_pktmbuf_mtod(single_pkt, unsigned char *) + sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
 						nat_tcp_learning(eth_hdr,ip_hdr,tcphdr,&new_port_id);
-						addr_table[new_port_id].is_alive = 10;
-						if (unlikely(addr_table[new_port_id].is_fill == 0)) {
+						addr_table[new_port_id].is_alive = 300;
+						if (unlikely(new_port_id == -1)) {
 							rte_pktmbuf_free(single_pkt);
 							break;
 						}
@@ -223,6 +227,8 @@ int up_stream_others(void)
 						ip_hdr->src_addr = ip_addr[1];
 						tcphdr->src_port = rte_cpu_to_be_16(new_port_id);
 						tcphdr->cksum = 0;
+
+						pkt[total_tx++] = single_pkt;
 						break;
 					default:
 						  rte_pktmbuf_free(single_pkt);
@@ -233,6 +239,7 @@ int up_stream_others(void)
 		}
 		if (likely(total_tx > 0)) {
 			nb_tx = rte_eth_tx_burst(1,0,pkt,total_tx);
+			// printf("total_tx: %d\n",nb_tx);
 			if (unlikely(nb_tx < total_tx)) {
 				uint16_t buf;
 				for(buf=nb_tx; buf<total_tx; buf++)

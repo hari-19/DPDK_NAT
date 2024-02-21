@@ -31,13 +31,16 @@ struct rte_timer 		arp;
 
 void nat_icmp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hdr, struct rte_icmp_hdr *icmphdr, uint32_t *new_port_id)
 {
-	// printf("IP src: %d\n",ip_hdr->src_addr);
-	// printf("ICMP ident: %d\n",icmphdr->icmp_ident);
 	*new_port_id = rte_be_to_cpu_16(icmphdr->icmp_ident + (ip_hdr->src_addr) / 10000);
-	// printf("New Port ID: %d\n",*new_port_id);
-	if (*new_port_id > 0xffff)
-		*new_port_id = *new_port_id / 0xffff + 1000;
+	bool free_space = false;
+
 	for (int j=1000,shift=0; j<65535; j++) {
+		
+		if (*new_port_id > 0xffff)
+			*new_port_id = *new_port_id / 0xffff + 1000;
+		
+		if (*new_port_id < 1000)
+			*new_port_id = *new_port_id + 1000;
 		if (addr_table[*new_port_id].is_fill == 1) {
 			if (addr_table[*new_port_id].src_ip == ip_hdr->src_addr && addr_table[*new_port_id].dst_ip == ip_hdr->dst_addr) {
 				puts("nat rule exist");
@@ -47,14 +50,21 @@ void nat_icmp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hd
 			(*new_port_id)++;
 		}
 		else {
-			// addr_table[*new_port_id].is_fill = 1;
+			addr_table[*new_port_id].is_fill = 1;
 			addr_table[*new_port_id].shift = shift;
+			free_space = true;
 			break;
 		}
 	}
-	rte_timer_reset(&arp,rte_get_timer_hz(),SINGLE,0,(rte_timer_cb_t)send_arp,&(ip_hdr->dst_addr));
-	puts("learning new icmp nat rule");
-	send_arp(&arp,&(ip_hdr->dst_addr));
+	
+	if(!free_space) {
+		*new_port_id = -1;
+		return;
+	}
+
+	// rte_timer_reset(&arp,rte_get_timer_hz(),SINGLE,0,(rte_timer_cb_t)send_arp,&(ip_hdr->dst_addr));
+	// puts("learning new icmp nat rule");
+	// send_arp(&arp,&(ip_hdr->dst_addr));
 	rte_memcpy(addr_table[*new_port_id].mac_addr,eth_hdr->src_addr.addr_bytes,6);
 	addr_table[*new_port_id].src_ip = ip_hdr->src_addr;
 	addr_table[*new_port_id].dst_ip = ip_hdr->dst_addr; 
@@ -64,30 +74,44 @@ void nat_icmp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hd
 void nat_udp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hdr, struct rte_udp_hdr *udphdr, uint32_t *new_port_id)
 {
 	*new_port_id = rte_be_to_cpu_16(udphdr->src_port + (ip_hdr->src_addr) / 10000);
-	if (*new_port_id > 0xffff)
-		*new_port_id = *new_port_id / 0xffff + 1000;
+	bool free_space = false;
+
 	for (int j=1000,shift=0; j<65535; j++) {
+		if (*new_port_id > 0xffff)
+			*new_port_id = *new_port_id / 0xffff + 1000;
+		
+		if (*new_port_id < 1000)
+			*new_port_id = *new_port_id + 1000;
+
 		if (likely(addr_table[*new_port_id].is_fill == 1)) {
-			if (likely(addr_table[*new_port_id].src_ip == ip_hdr->src_addr && addr_table[*new_port_id].dst_ip == ip_hdr->dst_addr)) {
-				//puts("nat rule exist");
+			if (likely(addr_table[*new_port_id].src_ip == ip_hdr->src_addr && addr_table[*new_port_id].dst_ip == ip_hdr->dst_addr && addr_table[*new_port_id].port_id == udphdr->src_port)) {
+				// puts("nat rule exist !!");
 				return;
 			}
 			shift++;
 			(*new_port_id)++;
 		}
 		else {
-			//addr_table[*new_port_id].is_fill = 1;
-			addr_table[*new_port_id].shift = shift;
+			addr_table[*new_port_id].is_fill = 1;
+			// addr_table[*new_port_id].shift = shift;
+			free_space = true;
 			break;
 		}
 	}
-	rte_timer_reset(&arp,rte_get_timer_hz(),SINGLE,0,(rte_timer_cb_t)send_arp,&(ip_hdr->dst_addr));
-	puts("learning new udp nat rule");
-	send_arp(&arp,&(ip_hdr->dst_addr));
+
+	if(!free_space) {
+		*new_port_id = -1;
+		return;
+	}
+	// rte_timer_reset(&arp,rte_get_timer_hz(),SINGLE,0,(rte_timer_cb_t)send_arp,&(ip_hdr->dst_addr));
+
+	// send_arp(&arp,&(ip_hdr->dst_addr));
 	rte_memcpy(addr_table[*new_port_id].mac_addr,eth_hdr->src_addr.addr_bytes,6);
+
 	addr_table[*new_port_id].src_ip = ip_hdr->src_addr;
 	addr_table[*new_port_id].dst_ip = ip_hdr->dst_addr; 
 	addr_table[*new_port_id].port_id = udphdr->src_port;
+
 }
 
 static void print_ip(uint32_t ip_addr){
@@ -98,37 +122,45 @@ static void print_ip(uint32_t ip_addr){
 	src_bytes[3] = (ip_addr >> 24) & 0xFF;
 	printf("%d.%d.%d.%d\n", src_bytes[0], src_bytes[1], src_bytes[2], src_bytes[3]);
 }
+
 void nat_tcp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hdr, struct rte_tcp_hdr *tcphdr, uint32_t *new_port_id)
 {
-	printf("tcp src port: %d\n",rte_be_to_cpu_16(tcphdr->src_port));
-	printf("tcp dst port: %d\n",rte_be_to_cpu_16(tcphdr->dst_port));
-	print_ip(ip_hdr->src_addr);
-	print_ip(ip_hdr->dst_addr);
-
 	*new_port_id = rte_be_to_cpu_16(tcphdr->src_port + (ip_hdr->src_addr) / 10000);
-	printf("new port id: %d\n",*new_port_id);
-	printf("port id: %d\n", addr_table[*new_port_id].port_id);
+	bool free_space = false;
+
 	if (*new_port_id > 0xffff)
 		*new_port_id = *new_port_id / 0xffff + 1000;
 	for (int j=1000,shift=0; j<65535; j++) {
+		if (*new_port_id > 0xffff)
+			*new_port_id = *new_port_id / 0xffff + 1000;
+		
+		if (*new_port_id < 1000)
+			*new_port_id = *new_port_id + 1000;
+
 		if (likely(addr_table[*new_port_id].is_fill == 1)) {
 			if (likely(addr_table[*new_port_id].src_ip == ip_hdr->src_addr && addr_table[*new_port_id].dst_ip == ip_hdr->dst_addr)) {
-				//puts("nat rule exist");
+				// puts("nat rule exist");
 				return;
 			}
 			shift++;
 			(*new_port_id)++;
 		}
 		else {
-			//addr_table[*new_port_id].is_fill = 1;
+			addr_table[*new_port_id].is_fill = 1;
 			addr_table[*new_port_id].shift = shift;
+			free_space = true;
 			break;
 		}
 	}
-	printf("new port id: %d\n",*new_port_id);
-	puts("learning new tcp nat rule");
-	rte_timer_reset(&arp,rte_get_timer_hz(),SINGLE,0,(rte_timer_cb_t)send_arp,&(ip_hdr->dst_addr));
-	send_arp(&arp,&(ip_hdr->dst_addr));
+
+	if(!free_space) {
+		*new_port_id = -1;
+		return;
+	}
+
+	// puts("learning new tcp nat rule");
+	// rte_timer_reset(&arp,rte_get_timer_hz(),SINGLE,0,(rte_timer_cb_t)send_arp,&(ip_hdr->dst_addr));
+	// send_arp(&arp,&(ip_hdr->dst_addr));
 	rte_memcpy(addr_table[*new_port_id].mac_addr,eth_hdr->src_addr.addr_bytes,6);
 	addr_table[*new_port_id].src_ip = ip_hdr->src_addr;
 	addr_table[*new_port_id].dst_ip = ip_hdr->dst_addr; 
