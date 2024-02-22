@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <linux/if_ether.h>
 #include <linux/ethtool.h>
+#include <pthread.h>
+#include <unistd.h>
 #include "nat.h"
 #include "ethtool.h"
 #include "mlx5_nat.h"
@@ -180,6 +182,77 @@ void vendor_init(void)
 	nic_vendor[2].vendor_id = VENDOR_OTHERS;
 }
 
+
+static void clear_nat(){
+	for(int i=0; i<65535; i++){
+		memset(&(addr_table[i]),0,sizeof(addr_table_t));
+	}
+	puts("NAT table cleared !!");
+}
+
+static void print_nat_mappings(){
+	u_int32_t count = 0;
+	FILE* f = fopen("nat_rule.txt","w");
+	for(int i=0; i<65535; i++){
+		if(addr_table[i].is_fill == 1){
+			uint32_t ip_addr = addr_table[i].src_ip;
+			unsigned char src_bytes[4];
+			src_bytes[0] = ip_addr & 0xFF;
+			src_bytes[1] = (ip_addr >> 8) & 0xFF;
+			src_bytes[2] = (ip_addr >> 16) & 0xFF;
+			src_bytes[3] = (ip_addr >> 24) & 0xFF;
+			fprintf(f, "%d.%d.%d.%d", src_bytes[0], src_bytes[1], src_bytes[2], src_bytes[3]);
+
+			fprintf(f, ",");
+			
+			fprintf(f, "%d,", rte_cpu_to_be_16(addr_table[i].port_id));
+			fprintf(f, "%d,", i);
+			fprintf(f, "%d\n",addr_table[i].is_alive);
+			count++;
+		}
+	}
+
+	fclose(f);
+	printf("Total nat mappings: %d\n",count);
+	// printf("NAT mappings printed to file.\n");
+}
+
+static void print_nat_stats(){
+	u_int32_t count = 0;
+
+	for(int i=0; i<65535; i++){
+		if(addr_table[i].is_fill == 1){
+			count++;
+		}
+	}
+	printf("Total nat mappings: %d\n",count);
+}
+
+static void *process_command(void *arg){
+	printf("Process command thread started\n");
+	char str[40];
+	int n;
+	struct nat_mappings_t *current;
+	uint64_t curr_tsc, diff_tsc = 0;
+	while (1){
+		if ((n = read(0, str, 40)) > 0){
+			if(strncmp(str, "show sessions",13) == 0){
+				/* since you already have a lock here then just delete some sessions yo */
+				print_nat_mappings();
+			}
+			else if(strncmp(str, "show nat stats", 14) == 0){
+				print_nat_stats();
+			}
+			else if(strncmp(str, "clear nat", 9) == 0){
+				clear_nat();
+			}
+			else
+				continue;
+		}
+	}
+	return NULL;
+}
+
 int main(int argc, char *argv[])
 {
 	uint16_t 				portid;
@@ -291,8 +364,11 @@ int main(int argc, char *argv[])
         //rte_eal_remote_launch(ring_buf,mbuf_pool,4);
     //}
 
-	printf("1 sec in main = %u\n", rte_get_timer_hz());
     rte_timer_reset(&nat,rte_get_timer_hz(),PERIODICAL,0,(rte_timer_cb_t)nat_rule_timer,NULL);
+
+	pthread_t tid;
+	rte_ctrl_thread_create(&tid, "process_command", NULL, process_command, NULL);
+
     timer_loop(NULL);
     rte_eal_mp_wait_lcore();
 	

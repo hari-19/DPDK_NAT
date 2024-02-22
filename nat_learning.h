@@ -17,7 +17,7 @@ typedef struct addr_table {
 	uint16_t		is_alive;
 }__rte_cache_aligned addr_table_t;
 
-extern addr_table_t 	addr_table[65535];
+extern addr_table_t 	addr_table[65536];
 extern unsigned char 	mac_addr[2][6];
 extern uint32_t 		ip_addr[2];
 extern struct rte_timer 		arp;

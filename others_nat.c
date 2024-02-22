@@ -92,6 +92,10 @@ int down_stream_others(void)
 					single_pkt->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_UDP_CKSUM;
 					udphdr = (struct rte_udp_hdr *)(rte_pktmbuf_mtod(single_pkt, unsigned char *) + sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
 					ori_port_id = rte_be_to_cpu_16(udphdr->dst_port);
+					if (unlikely(addr_table[ori_port_id].is_fill == 0)) {
+						rte_pktmbuf_free(single_pkt);
+						break;
+					}
 					rte_memcpy(eth_hdr->dst_addr.addr_bytes,addr_table[ori_port_id].mac_addr,6);
 					rte_memcpy(eth_hdr->src_addr.addr_bytes,mac_addr[0],6);
 					ip_hdr->dst_addr = addr_table[ori_port_id].src_ip;
@@ -106,6 +110,10 @@ int down_stream_others(void)
 					single_pkt->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM;
 					tcphdr = (struct rte_tcp_hdr *)(rte_pktmbuf_mtod(single_pkt, unsigned char *) + sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));				
 					ori_port_id = rte_be_to_cpu_16(tcphdr->dst_port);
+					if (unlikely(addr_table[ori_port_id].is_fill == 0)) {
+						rte_pktmbuf_free(single_pkt);
+						break;
+					}
 					rte_memcpy(eth_hdr->dst_addr.addr_bytes,addr_table[ori_port_id].mac_addr,6);
 					rte_memcpy(eth_hdr->src_addr.addr_bytes,mac_addr[0],6);
 					ip_hdr->dst_addr = addr_table[ori_port_id].src_ip;

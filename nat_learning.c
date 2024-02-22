@@ -23,7 +23,7 @@ void 					nat_icmp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *
 uint16_t 				get_checksum(const void *const addr, const size_t bytes);
 void 					send_arp(__attribute__((unused)) struct rte_timer *tim, uint32_t *dst_addr);
 
-addr_table_t 			addr_table[65535];
+addr_table_t 			addr_table[65536];
 unsigned char 		mac_addr[2][6];
 uint32_t 				ip_addr[2];
 struct rte_mempool 		*mbuf_pool;
@@ -62,9 +62,6 @@ void nat_icmp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hd
 		return;
 	}
 
-	// rte_timer_reset(&arp,rte_get_timer_hz(),SINGLE,0,(rte_timer_cb_t)send_arp,&(ip_hdr->dst_addr));
-	// puts("learning new icmp nat rule");
-	// send_arp(&arp,&(ip_hdr->dst_addr));
 	rte_memcpy(addr_table[*new_port_id].mac_addr,eth_hdr->src_addr.addr_bytes,6);
 	addr_table[*new_port_id].src_ip = ip_hdr->src_addr;
 	addr_table[*new_port_id].dst_ip = ip_hdr->dst_addr; 
@@ -84,7 +81,7 @@ void nat_udp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hdr
 			*new_port_id = *new_port_id + 1000;
 
 		if (likely(addr_table[*new_port_id].is_fill == 1)) {
-			if (likely(addr_table[*new_port_id].src_ip == ip_hdr->src_addr && addr_table[*new_port_id].dst_ip == ip_hdr->dst_addr && addr_table[*new_port_id].port_id == udphdr->src_port)) {
+			if (likely(addr_table[*new_port_id].src_ip == ip_hdr->src_addr && addr_table[*new_port_id].port_id == udphdr->src_port)) {
 				// puts("nat rule exist !!");
 				return;
 			}
@@ -114,15 +111,6 @@ void nat_udp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hdr
 
 }
 
-static void print_ip(uint32_t ip_addr){
-	unsigned char src_bytes[4];
-	src_bytes[0] = ip_addr & 0xFF;
-	src_bytes[1] = (ip_addr >> 8) & 0xFF;
-	src_bytes[2] = (ip_addr >> 16) & 0xFF;
-	src_bytes[3] = (ip_addr >> 24) & 0xFF;
-	printf("%d.%d.%d.%d\n", src_bytes[0], src_bytes[1], src_bytes[2], src_bytes[3]);
-}
-
 void nat_tcp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hdr, struct rte_tcp_hdr *tcphdr, uint32_t *new_port_id)
 {
 	*new_port_id = rte_be_to_cpu_16(tcphdr->src_port + (ip_hdr->src_addr) / 10000);
@@ -138,7 +126,7 @@ void nat_tcp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hdr
 			*new_port_id = *new_port_id + 1000;
 
 		if (likely(addr_table[*new_port_id].is_fill == 1)) {
-			if (likely(addr_table[*new_port_id].src_ip == ip_hdr->src_addr && addr_table[*new_port_id].dst_ip == ip_hdr->dst_addr)) {
+			if (likely(addr_table[*new_port_id].src_ip == ip_hdr->src_addr && addr_table[*new_port_id].dst_ip == ip_hdr->dst_addr && addr_table[*new_port_id].port_id == tcphdr->src_port)) {
 				// puts("nat rule exist");
 				return;
 			}
