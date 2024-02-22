@@ -14,7 +14,7 @@ typedef struct addr_table {
 	uint16_t		port_id;
 	uint32_t		shift;
 	int 			is_fill;
-	uint8_t			is_alive;
+	uint16_t		is_alive;
 }__rte_cache_aligned addr_table_t;
 
 extern addr_table_t 	addr_table[65535];

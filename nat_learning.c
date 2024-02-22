@@ -93,7 +93,7 @@ void nat_udp_learning(struct rte_ether_hdr *eth_hdr, struct rte_ipv4_hdr *ip_hdr
 		}
 		else {
 			addr_table[*new_port_id].is_fill = 1;
-			// addr_table[*new_port_id].shift = shift;
+						// addr_table[*new_port_id].shift = shift;
 			free_space = true;
 			break;
 		}

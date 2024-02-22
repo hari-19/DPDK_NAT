@@ -125,11 +125,11 @@ static inline int port_init(uint16_t port, uint8_t vendor_id, struct rte_mempool
 
 static void nat_rule_timer(__attribute__((unused)) struct rte_timer *tim, __attribute__((unused)) void *arg)
 {
-	printf("TIMER !!\n");
 	for(int i=0; i<65535; i++) {
 		if (addr_table[i].is_fill == 1) {
-			if (addr_table[i].is_alive > 0)
+			if (addr_table[i].is_alive > 0){
 				addr_table[i].is_alive--;
+			}
 			else{
 				FILE* f = fopen("nat_rule.txt","a+");
 				fprintf(f,"nat rule expired: %d\n",i);
@@ -290,8 +290,10 @@ int main(int argc, char *argv[])
         
         //rte_eal_remote_launch(ring_buf,mbuf_pool,4);
     //}
-    // rte_timer_reset(&nat,rte_get_timer_hz(),PERIODICAL,0,(rte_timer_cb_t)nat_rule_timer,NULL);
-    // timer_loop(NULL);
+
+	printf("1 sec in main = %u\n", rte_get_timer_hz());
+    rte_timer_reset(&nat,rte_get_timer_hz(),PERIODICAL,0,(rte_timer_cb_t)nat_rule_timer,NULL);
+    timer_loop(NULL);
     rte_eal_mp_wait_lcore();
 	
 	return 0;

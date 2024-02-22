@@ -81,7 +81,7 @@ int down_stream_others(void)
 					rte_memcpy(eth_hdr->src_addr.addr_bytes,mac_addr[0],6);
 					ip_hdr->dst_addr = addr_table[ori_port_id].src_ip;
 					icmphdr->icmp_ident = addr_table[ori_port_id].port_id;
-					addr_table[ori_port_id].is_alive = 10;
+					addr_table[ori_port_id].is_alive = 60;
 
 					icmphdr->icmp_cksum = 0;
 					icmphdr->icmp_cksum = get_checksum(icmphdr,single_pkt->data_len - sizeof(struct rte_ipv4_hdr));
@@ -97,9 +97,10 @@ int down_stream_others(void)
 					ip_hdr->dst_addr = addr_table[ori_port_id].src_ip;
 					//ip_hdr->src_addr = ip_addr[0];
 					udphdr->dst_port = addr_table[ori_port_id].port_id;
-					addr_table[ori_port_id].is_alive = 10;
+					addr_table[ori_port_id].is_alive = 300;
 
 					udphdr->dgram_cksum = 0;
+					pkt[total_tx++] = single_pkt;
 					break;
 				case TCP :
 					single_pkt->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM;
@@ -109,9 +110,10 @@ int down_stream_others(void)
 					rte_memcpy(eth_hdr->src_addr.addr_bytes,mac_addr[0],6);
 					ip_hdr->dst_addr = addr_table[ori_port_id].src_ip;
 					tcphdr->dst_port = addr_table[ori_port_id].port_id;
-					addr_table[ori_port_id].is_alive = 10;
+					addr_table[ori_port_id].is_alive = 300;
 
 					tcphdr->cksum = 0;
+					pkt[total_tx++] = single_pkt;
 					break;
 				default:
 					rte_pktmbuf_free(single_pkt);
